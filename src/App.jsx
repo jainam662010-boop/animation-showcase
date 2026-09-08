@@ -1568,6 +1568,7 @@ const CursorFollower = memo(() => {
       trailRef.current.push({ x, y, life: 1, hue: 210 + Math.random() * 50 })
       if (trailRef.current.length > 24) trailRef.current.shift()
     }
+    posRef.current = { x: w / 2, y: h / 2 }
     stage.addEventListener('mousemove', onMove)
 
     const loop = () => {
@@ -1608,8 +1609,9 @@ const CursorFollower = memo(() => {
     return () => { cancelAnimationFrame(rafRef.current); ro.disconnect(); stage.removeEventListener('mousemove', onMove) }
   }, [])
 
-  return <div ref={stageRef} className="card-stage" style={{ cursor: 'none' }}>
-    <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0 }} />
+  return <div ref={stageRef} className="card-stage" style={{ cursor: 'none', position: 'relative' }}>
+    <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
+    <span style={{ position: 'absolute', bottom: 14, left: 0, right: 0, textAlign: 'center', color: 'var(--text4)', fontSize: 11, pointerEvents: 'none', zIndex: 102 }}>Move cursor here</span>
   </div>
 })
 
