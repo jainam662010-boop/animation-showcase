@@ -1545,6 +1545,46 @@ const FramerRotateIn = memo(() => {
   return <div className="card-stage" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}><motion.div initial={{ opacity: 0, rotate: -180, scale: 0 }} animate={{ opacity: 1, rotate: 0, scale: 1 }} transition={{ duration: .8, type: 'spring', stiffness: 80 }} style={{ width: 110, height: 110, borderRadius: 22, background: 'linear-gradient(135deg,var(--accent),var(--accent3))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 800, fontSize: 24 }}>E</motion.div></div>
 })
 
+const CursorFollower = memo(() => {
+  const [pos, setPos] = useState({ x: 0, y: 0 })
+  const [trail, setTrail] = useState([])
+  const stageRef = useRef(null)
+  return (
+    <div ref={stageRef} className="card-stage" style={{ cursor: 'none', overflow: 'hidden' }}
+      onMouseMove={e => {
+        const r = stageRef.current.getBoundingClientRect()
+        const x = e.clientX - r.left, y = e.clientY - r.top
+        setPos({ x, y })
+        setTrail(prev => [...prev.slice(-18), { x, y, id: Date.now() }])
+      }}
+    >
+      {trail.map((p, i) => {
+        const t = i / trail.length
+        return <motion.div key={p.id} animate={{ x: p.x - 16, y: p.y - 16, scale: t * .8 + .2, opacity: t }}
+          transition={{ duration: 0 }} style={{
+            position: 'absolute', width: 32, height: 32, borderRadius: '50%',
+            background: `hsla(${210 + i * 8},70%,55%,${t * .35})`,
+            boxShadow: `0 0 ${t * 20}px hsla(${210 + i * 8},70%,55%,${t * .3})`,
+            pointerEvents: 'none', zIndex: i
+          }} />
+      })}
+      <motion.div animate={{ x: pos.x - 20, y: pos.y - 20 }}
+        transition={{ type: 'spring', stiffness: 500, damping: 28 }}
+        style={{
+          position: 'absolute', width: 40, height: 40, borderRadius: '50%',
+          border: '2px solid var(--accent)', background: 'rgba(37,99,235,.08)',
+          boxShadow: '0 0 24px rgba(37,99,235,.2)', pointerEvents: 'none', zIndex: 100
+        }} />
+      <motion.div animate={{ x: pos.x - 4, y: pos.y - 4 }}
+        transition={{ type: 'spring', stiffness: 800, damping: 35 }}
+        style={{
+          position: 'absolute', width: 8, height: 8, borderRadius: '50%',
+          background: 'var(--accent)', pointerEvents: 'none', zIndex: 101
+        }} />
+    </div>
+  )
+})
+
 // ==================== EFFECTS LIST ====================
 const allEffects = [
   { id: 1, name: 'ShaderGradient', desc: 'Flowing 3D gradient mesh', tags: ['GPU', 'Animated'], Comp: ShaderGradient },
@@ -1657,6 +1697,7 @@ const framerEffects = [
   { name: 'Framer Scale Bounce', desc: 'Spring bounce on tap', tags: ['CSS', 'Interactive'], Comp: FramerScaleBounce },
   { name: 'Framer Stagger List', desc: 'Items animate in sequence', tags: ['CSS', 'Scroll'], Comp: FramerStaggerList },
   { name: 'Framer Rotate In', desc: 'Spring rotation reveal', tags: ['CSS', 'Animated'], Comp: FramerRotateIn },
+  { name: 'Cursor Follower', desc: 'Glowing trail follows cursor', tags: ['CSS', 'Interactive'], Comp: CursorFollower },
 ]
 let _efId = allEffects.length + 1
 r3fEffects.forEach(ef => { allEffects.push({ id: _efId++, ...ef }) })
