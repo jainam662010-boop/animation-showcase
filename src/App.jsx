@@ -1546,43 +1546,71 @@ const FramerRotateIn = memo(() => {
 })
 
 const CursorFollower = memo(() => {
-  const [pos, setPos] = useState({ x: 0, y: 0 })
-  const [trail, setTrail] = useState([])
   const stageRef = useRef(null)
-  return (
-    <div ref={stageRef} className="card-stage" style={{ cursor: 'none', overflow: 'hidden' }}
-      onMouseMove={e => {
-        const r = stageRef.current.getBoundingClientRect()
-        const x = e.clientX - r.left, y = e.clientY - r.top
-        setPos({ x, y })
-        setTrail(prev => [...prev.slice(-18), { x, y, id: Date.now() }])
-      }}
-    >
-      {trail.map((p, i) => {
-        const t = i / trail.length
-        return <motion.div key={p.id} animate={{ x: p.x - 16, y: p.y - 16, scale: t * .8 + .2, opacity: t }}
-          transition={{ duration: 0 }} style={{
-            position: 'absolute', width: 32, height: 32, borderRadius: '50%',
-            background: `hsla(${210 + i * 8},70%,55%,${t * .35})`,
-            boxShadow: `0 0 ${t * 20}px hsla(${210 + i * 8},70%,55%,${t * .3})`,
-            pointerEvents: 'none', zIndex: i
-          }} />
-      })}
-      <motion.div animate={{ x: pos.x - 20, y: pos.y - 20 }}
-        transition={{ type: 'spring', stiffness: 500, damping: 28 }}
-        style={{
-          position: 'absolute', width: 40, height: 40, borderRadius: '50%',
-          border: '2px solid var(--accent)', background: 'rgba(37,99,235,.08)',
-          boxShadow: '0 0 24px rgba(37,99,235,.2)', pointerEvents: 'none', zIndex: 100
-        }} />
-      <motion.div animate={{ x: pos.x - 4, y: pos.y - 4 }}
-        transition={{ type: 'spring', stiffness: 800, damping: 35 }}
-        style={{
-          position: 'absolute', width: 8, height: 8, borderRadius: '50%',
-          background: 'var(--accent)', pointerEvents: 'none', zIndex: 101
-        }} />
-    </div>
-  )
+  const trailRef = useRef([])
+  const posRef = useRef({ x: 0, y: 0 })
+  const canvasRef = useRef(null)
+  const rafRef = useRef(null)
+
+  useEffect(() => {
+    const stage = stageRef.current, canvas = canvasRef.current
+    if (!stage || !canvas) return
+    const ctx = canvas.getContext('2d')
+    let w, h
+    const resize = () => { w = canvas.width = stage.offsetWidth; h = canvas.height = stage.offsetHeight }
+    resize()
+    const ro = new ResizeObserver(resize); ro.observe(stage)
+
+    const onMove = e => {
+      const r = stage.getBoundingClientRect()
+      const x = e.clientX - r.left, y = e.clientY - r.top
+      posRef.current = { x, y }
+      trailRef.current.push({ x, y, life: 1, hue: 210 + Math.random() * 50 })
+      if (trailRef.current.length > 24) trailRef.current.shift()
+    }
+    stage.addEventListener('mousemove', onMove)
+
+    const loop = () => {
+      ctx.clearRect(0, 0, w, h)
+      const trail = trailRef.current, pos = posRef.current
+      const now = performance.now()
+
+      // Draw trail
+      trail.forEach((p, i) => {
+        p.life -= .025
+        if (p.life <= 0) return
+        const r = 14 * p.life + 2
+        const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r)
+        grad.addColorStop(0, `hsla(${p.hue},70%,55%,${p.life * .45})`)
+        grad.addColorStop(1, `hsla(${p.hue},70%,55%,0)`)
+        ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2)
+        ctx.fillStyle = grad; ctx.fill()
+      })
+      trailRef.current = trail.filter(p => p.life > 0)
+
+      // Outer ring
+      const ringR = 20
+      ctx.beginPath(); ctx.arc(pos.x, pos.y, ringR, 0, Math.PI * 2)
+      ctx.strokeStyle = 'rgba(37,99,235,.5)'; ctx.lineWidth = 2; ctx.stroke()
+      ctx.beginPath(); ctx.arc(pos.x, pos.y, ringR, 0, Math.PI * 2)
+      const ringGlow = ctx.createRadialGradient(pos.x, pos.y, ringR - 4, pos.x, pos.y, ringR + 8)
+      ringGlow.addColorStop(0, 'rgba(37,99,235,.15)'); ringGlow.addColorStop(1, 'rgba(37,99,235,0)')
+      ctx.fillStyle = ringGlow; ctx.fill()
+
+      // Center dot
+      ctx.beginPath(); ctx.arc(pos.x, pos.y, 4, 0, Math.PI * 2)
+      ctx.fillStyle = '#2563eb'; ctx.fill()
+
+      rafRef.current = requestAnimationFrame(loop)
+    }
+    rafRef.current = requestAnimationFrame(loop)
+
+    return () => { cancelAnimationFrame(rafRef.current); ro.disconnect(); stage.removeEventListener('mousemove', onMove) }
+  }, [])
+
+  return <div ref={stageRef} className="card-stage" style={{ cursor: 'none' }}>
+    <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0 }} />
+  </div>
 })
 
 // ==================== EFFECTS LIST ====================
